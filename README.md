@@ -9,7 +9,6 @@
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python)](https://python.org)
 [![Groq](https://img.shields.io/badge/Groq-Llama_3.3_70B-F55036?style=flat-square)](https://groq.com)
 [![Tests](https://img.shields.io/badge/Tests-39_passing-brightgreen?style=flat-square)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 </div>
 
@@ -157,8 +156,5 @@ python3 tests/test_nlp.py            # without pytest
 
 ---
 
-## License
-
-MIT — see [LICENSE](LICENSE)
 
 > ⚕️ For educational purposes only. Not a substitute for professional medical advice.
