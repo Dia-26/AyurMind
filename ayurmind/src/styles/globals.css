@@ -52,7 +52,7 @@
   --r-xl: 28px;
 }
 
-html { scroll-behavior: smooth; font-size: 14px; }
+html { scroll-behavior: smooth; font-size: 16px; }
 
 body {
   font-family: 'DM Sans', sans-serif;
@@ -75,7 +75,7 @@ body {
 /* Form elements */
 input, textarea, select {
   font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
   background: var(--bg3);
   border: 1px solid var(--border);
@@ -135,5 +135,5 @@ input::placeholder, textarea::placeholder {
 
 /* Responsive */
 @media (max-width: 768px) {
-  html { font-size: 13px; }
+  html { font-size: 15px; }
 }

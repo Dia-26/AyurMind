@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
-import { apiSentiment, apiFormula, apiSummarize } from '../utils/api';
+import { apiSentiment } from '../utils/api';
 import { Btn, Spinner, PageHeader, Card, Alert, Badge, TabBar, ConfidenceMeter, Disclaimer } from '../components/UI';
 
 const TABS = [
@@ -34,12 +34,6 @@ export default function SentimentPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
-  const SYSTEM_MAP = {
-    review: SYSTEM_PROMPTS.sentiment,
-    claim: SYSTEM_PROMPTS.claimVerifier,
-    text: SYSTEM_PROMPTS.sentiment,
-  };
-
   const handleAnalyze = async () => {
     if (!text.trim()) { setError('Please enter text.'); return; }
     if (!apiKey) { setError('Please add your Groq API key in Settings.'); return; }
@@ -47,11 +41,19 @@ export default function SentimentPage() {
     setLoading(true);
     setResult(null);
     try {
-      const data = await groqJSON([
-        { role: 'system', content: SYSTEM_MAP[activeTab] },
-        { role: 'user', content: `Analyze: "${text}"` },
-      ], { apiKey, maxTokens: 800 });
-      setResult({ ...data, mode: activeTab });
+      const data = await apiSentiment({ text, mode: activeTab, apiKey });
+
+      // Normalize backend claim-verifier keys to the UI contract.
+      const normalized = activeTab === 'claim'
+        ? {
+            ...data,
+            red_flags: data.red_flags || data.pseudo_red_flags || [],
+            valid_aspects: data.valid_aspects || data.authentic_signals || [],
+            classical_ref: data.classical_ref || (data.classical_refs_found || []).join(', '),
+          }
+        : data;
+
+      setResult({ ...normalized, mode: activeTab });
     } catch (e) {
       setError('Analysis failed: ' + e.message);
     }

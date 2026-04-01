@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
-import { apiSentiment, apiFormula, apiSummarize } from '../utils/api';
+import { apiSummarize } from '../utils/api';
 import { Btn, Spinner, PageHeader, Card, Alert, Badge, Disclaimer } from '../components/UI';
 
 const SAMPLE_TEXTS = [
@@ -44,11 +44,15 @@ export default function SummarizerPage() {
     setResult(null);
 
     try {
-      const data = await groqJSON([
-        { role: 'system', content: SYSTEM_PROMPTS.textSummarizer },
-        { role: 'user', content: `Analyze and summarize this Ayurvedic text:\n\n${text}` },
-      ], { apiKey, maxTokens: 900 });
-      setResult(data);
+      const data = await apiSummarize({ text, apiKey });
+      const normalized = {
+        ...data,
+        summary: data.summary || data.extractive_summary || 'No summary was generated.',
+        authenticity_score: typeof data.authenticity_score === 'number'
+          ? data.authenticity_score
+          : (typeof data.nlp_authenticity === 'number' ? data.nlp_authenticity : 0),
+      };
+      setResult(normalized);
     } catch (e) {
       setError('Summarization failed: ' + e.message);
     }
