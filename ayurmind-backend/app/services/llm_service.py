@@ -43,12 +43,16 @@ async def call_groq(
     if not HAS_HTTPX:
         raise RuntimeError("httpx not installed. Run: pip install httpx")
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    effective_api_key = (api_key or "").strip() or (settings.groq_api_key or "").strip()
+    if not effective_api_key:
+        raise ValueError("No Groq API key found. Add one in Settings or set GROQ_API_KEY for backend.")
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
             GROQ_URL,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {effective_api_key}",
             },
             json={
                 "model": MODEL,
@@ -57,7 +61,20 @@ async def call_groq(
                 "temperature": temperature,
             },
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            message = f"Groq API error: HTTP {response.status_code}"
+            try:
+                err = response.json()
+                message = err.get("error", {}).get("message") or message
+            except Exception:
+                pass
+
+            if response.status_code == 401:
+                raise ValueError("Groq API key rejected (401). Please update your key in Settings.")
+            if response.status_code == 429:
+                raise ValueError("Groq API rate limit reached (429). Please retry shortly.")
+
+            raise ValueError(message)
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
@@ -76,7 +93,31 @@ async def call_groq_json(
     match = re.search(r"\{[\s\S]*\}", raw)
     if not match:
         raise ValueError(f"No JSON found in LLM response: {raw[:200]}")
-    return json.loads(match.group(0))
+    candidate = match.group(0)
+
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        # Ask the model to rewrite malformed JSON as strict JSON only.
+        repair_prompt = (
+            "You are a JSON repair tool. Convert the following content into valid RFC8259 JSON. "
+            "Return ONLY the repaired JSON object with double quotes, escaped newlines, and no trailing commas."
+        )
+        repaired_raw = await call_groq(
+            [
+                {"role": "system", "content": repair_prompt},
+                {"role": "user", "content": candidate[:12000]},
+            ],
+            api_key,
+            max_tokens=min(max_tokens, 1100),
+            temperature=0,
+        )
+        repaired_raw = re.sub(r"```json\s*", "", repaired_raw, flags=re.IGNORECASE)
+        repaired_raw = re.sub(r"```\s*", "", repaired_raw).strip()
+        repaired_match = re.search(r"\{[\s\S]*\}", repaired_raw)
+        if not repaired_match:
+            raise ValueError("Failed to repair malformed LLM JSON output.")
+        return json.loads(repaired_match.group(0))
 
 
 # ──────────────────────────────────────────────────────────────────────────────

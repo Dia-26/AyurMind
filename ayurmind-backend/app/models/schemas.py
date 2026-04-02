@@ -261,7 +261,7 @@ class FormulaRequest(BaseModel):
     imbalance: str = ""
     constitution: str = ""
     notes: str = ""
-    api_key: str = Field(..., min_length=10)
+    api_key: str = Field(default="", description="Optional; backend GROQ_API_KEY fallback is used when empty")
 
 
 # ──────────────────────────────────────────────────────────────────────────────

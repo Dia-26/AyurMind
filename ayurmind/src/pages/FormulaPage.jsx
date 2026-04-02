@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
-import { apiSentiment, apiFormula, apiSummarize } from '../utils/api';
-import { Btn, Spinner, PageHeader, Card, Alert, Badge, Disclaimer } from '../components/UI';
+import { apiFormula } from '../utils/api';
+import { Btn, Spinner, PageHeader, Card, Alert, Disclaimer } from '../components/UI';
 
 const FORMULA_GOALS = [
   'Stress & anxiety relief', 'Deep sleep & relaxation', 'Digestive support & Agni',
@@ -22,7 +22,7 @@ const INGREDIENT_ROLE_COLORS = {
 };
 
 export default function FormulaPage() {
-  const { apiKey } = useApp();
+  const { apiKey, backendOnline } = useApp();
   const [goals, setGoals] = useState([]);
   const [imbalance, setImbalance] = useState('');
   const [constitution, setConstitution] = useState('');
@@ -35,18 +35,19 @@ export default function FormulaPage() {
 
   const handleBuild = async () => {
     if (!goals.length) { setError('Please select at least one therapeutic goal.'); return; }
-    if (!apiKey) { setError('Please add your Groq API key in Settings.'); return; }
+    if (!apiKey && !backendOnline) { setError('Please add your Groq API key in Settings.'); return; }
     setError('');
     setLoading(true);
     setResult(null);
 
-    const prompt = `Design an Ayurvedic herbal formula for:\nGoals: ${goals.join(', ')}\n${imbalance ? `Dosha imbalance: ${imbalance}` : ''}\n${constitution ? `Constitution: ${constitution}` : ''}\n${additionalNotes ? `Additional notes: ${additionalNotes}` : ''}`;
-
     try {
-      const data = await groqJSON([
-        { role: 'system', content: SYSTEM_PROMPTS.formulaBuilder },
-        { role: 'user', content: prompt },
-      ], { apiKey, maxTokens: 1000 });
+      const data = await apiFormula({
+        goals,
+        imbalance,
+        constitution,
+        notes: additionalNotes,
+        apiKey,
+      });
       setResult(data);
     } catch (e) {
       setError('Formula generation failed: ' + e.message);
@@ -64,7 +65,7 @@ export default function FormulaPage() {
         />
         <Disclaimer text="⚕️ Herbal formulas are for educational reference only. Always consult a qualified Vaidya before preparing or consuming any Ayurvedic formula." />
 
-        {!apiKey && <Alert type="warning">Add your Groq API key in Settings to enable formula generation.</Alert>}
+        {!apiKey && !backendOnline && <Alert type="warning">Add your Groq API key in Settings to enable formula generation.</Alert>}
         {error && <Alert type="error">{error}</Alert>}
 
         <Card>
@@ -112,7 +113,7 @@ export default function FormulaPage() {
             <textarea rows={2} value={additionalNotes} onChange={e => setAdditionalNotes(e.target.value)} placeholder="e.g. Prefer easily available herbs, avoid dairy-based preparations, need powder form..." />
           </div>
 
-          <Btn onClick={handleBuild} disabled={loading || !apiKey || !goals.length} style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
+          <Btn onClick={handleBuild} disabled={loading || (!apiKey && !backendOnline) || !goals.length} style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
             {loading ? <><Spinner color="#09080A" /> Building formula...</> : '⊞ Design Formula'}
           </Btn>
         </Card>
